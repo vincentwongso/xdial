@@ -2,19 +2,34 @@
 
 import Expo from 'expo';
 import React from 'react';
-import {StyleSheet, Text, View} from 'react-native';
+import {StyleSheet, View, Text, TouchableHighlight, ScrollView} from 'react-native';
+import { List, ListItem} from 'react-native-elements'
+
+import ContactDetail from './ContactDetail';
 
 class App extends React.Component {
-  
+
   constructor(props) {
     super(props);
-    this.state = {contacts: []};
+    this.state = {
+      contacts: [],
+      selectedContact: null
+    };
   }
-  
+
   componentDidMount() {
     this._loadContacts().done();
   }
-  
+
+  _onPressButton = (contact) => {
+    console.log(contact);
+    this.setState({selectedContact: contact});
+  };
+
+  closeContactDetail = () => {
+    this.setState({selectedContact: null});
+  };
+
   _loadContacts = async () => {
     // Ask for permission to query contacts.
     const permission = await Expo.Permissions.askAsync(Expo.Permissions.CONTACTS);
@@ -27,16 +42,16 @@ class App extends React.Component {
         Expo.Contacts.PHONE_NUMBERS,
         Expo.Contacts.EMAILS,
       ],
-      pageSize: 10,
+      pageSize: 100,
       pageOffset: 0,
     });
-    console.log(contacts);
     let results = [];
     if (contacts.total > 0) {
       contacts.data.map((contact) => {
+        console.log(contact.phoneNumbers);
         results.push({
           name: contact.name,
-          phoneNumbers: JSON.stringify(contact.phoneNumbers)
+          phoneNumbers: contact.phoneNumbers
         });
       });
     }
@@ -44,16 +59,37 @@ class App extends React.Component {
       contacts: results
     });
   };
-  
+
   render() {
-    let contacts = this.state.contacts;
+    const {contacts, selectedContact} = this.state;
+    console.log(contacts);
     return (
-      <View style={styles.container}>
-        <Text>Hello World!</Text>
-        {contacts.map((contact, i) =>
-          <Text key={i}>{contact.name}: {contact.phoneNumbers}</Text>
-        )}
-      </View>
+      <ScrollView style={styles.container}>
+        <ContactDetail visible={selectedContact !== null} contact={selectedContact} closeContactDetail={this.closeContactDetail} />
+        <Text h1 style={{marginTop: 20}}>Contact List</Text>
+        <List containerStyle={{marginBottom: 20}}>
+          {
+            contacts.map((contact, i) => (
+              <ListItem
+                key={i}
+                onPress={() => this._onPressButton(contact)}
+                roundAvatar
+                avatar={{uri:"https://s3.amazonaws.com/uifaces/faces/twitter/adhamdannaway/128.jpg"}}
+                title={contact.name}
+                subtitle={
+                  <View style={styles.subtitleView}>
+                    {contact.phoneNumbers.map((phoneNumber, i) => (
+                      <Text numberOfLines={1} ellipsizeMode="tail" key={i} style={styles.ratingText}>{phoneNumber.number + "\n"}</Text>
+                    ))
+                    }
+                  </View>
+
+                }
+              />
+            ))
+          }
+        </List>
+      </ScrollView>
     );
   }
 }
@@ -61,10 +97,20 @@ class App extends React.Component {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
+  subtitleView: {
+    flexDirection: 'row',
+    paddingLeft: 10,
+    paddingTop: 5
+  },
+  ratingImage: {
+    height: 19.21,
+    width: 100
+  },
+  ratingText: {
+    paddingLeft: 10,
+    color: 'grey'
+  }
 });
 
 Expo.registerRootComponent(App);
