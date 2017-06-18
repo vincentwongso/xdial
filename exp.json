@@ -1,21 +1,25 @@
 {
-  "name": "xdial",
-  "description": "An empty new project",
-  "slug": "xdial",
+  "name": "hellow",
+  "description": "Alpha version of project Hellow",
+  "slug": "hellow",
   "privacy": "public",
-  "sdkVersion": "16.0.0",
-  "version": "1.0.0",
+  "sdkVersion": "17.0.0",
+  "version": "0.0.1",
   "orientation": "portrait",
   "primaryColor": "#cccccc",
-  "icon": "./assets/icons/app.png",
+  "icon": "./assets/icons/icon.png",
   "loading": {
-    "icon": "./assets/icons/loading.png",
-    "hideExponentText": false
+    "icon": "./assets/icons/icon.png",
+    "hideExponentText": true
   },
   "packagerOpts": {
     "assetExts": ["ttf", "mp4"]
   },
   "ios": {
-    "supportsTablet": true
+    "bundleIdentifier": "com.galaksi.hellow",
+    "supportsTablet": false
+  },
+  "android": {
+    "package": "com.galaksi.hellow"
   }
 }

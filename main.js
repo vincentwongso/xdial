@@ -1,116 +1,125 @@
-'use strict';
-
-import Expo from 'expo';
+import Expo, { SQLite, Permissions, Contacts } from 'expo';
 import React from 'react';
-import {StyleSheet, View, Text, TouchableHighlight, ScrollView} from 'react-native';
-import { List, ListItem} from 'react-native-elements'
+import { View, Image, Dimensions } from 'react-native';
+import { DrawerNavigator, DrawerItems } from 'react-navigation';
+import { Icon } from 'react-native-elements';
 
-import ContactDetail from './ContactDetail';
+import Home from './src/drawer/home';
+
+const db = SQLite.openDatabase({ name: 'db.db' });
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+
+const CustomDrawerContentComponent = props => (
+  <View style={{ flex: 1, backgroundColor: '#43484d' }}>
+    <View
+      style={{ marginTop: 40, justifyContent: 'center', alignItems: 'center' }}
+    >
+    </View>
+    <DrawerItems {...props} />
+  </View>
+);
+
+const MainRoot = DrawerNavigator(
+  {
+    Home: {
+      path: '/home',
+      screen: Home,
+    }/*,
+    SwipeDecker: {
+      path: '/swiper_decker',
+      screen: SwipeDecker,
+    },
+    Ratings: {
+      path: '/ratings',
+      screen: Ratings,
+    },
+    Pricing: {
+      path: '/pricing',
+      screen: Pricing,
+    },*/
+  },
+  {
+    initialRouteName: 'Home',
+    contentOptions: {
+      activeTintColor: '#548ff7',
+      activeBackgroundColor: 'transparent',
+      inactiveTintColor: '#ffffff',
+      inactiveBackgroundColor: 'transparent',
+      labelStyle: {
+        fontSize: 15,
+        marginLeft: 0,
+        marginTop: 15
+      },
+    },
+    drawerWidth: SCREEN_WIDTH * 0.8,
+    contentComponent: CustomDrawerContentComponent,
+  }
+);
 
 class App extends React.Component {
-
-  constructor(props) {
-    super(props);
-    this.state = {
-      contacts: [],
-      selectedContact: null
-    };
-  }
-
-  componentDidMount() {
-    this._loadContacts().done();
-  }
-
-  _onPressButton = (contact) => {
-    console.log(contact);
-    this.setState({selectedContact: contact});
+  state = {
+    isReady: false,
   };
 
-  closeContactDetail = () => {
-    this.setState({selectedContact: null});
-  };
+  componentWillMount() {
+    this._cacheResourcesAsync();
+  }
+
+  render() {
+    if (!this.state.isReady) {
+      return <Components.AppLoading />;
+    }
+
+    return (
+      <MainRoot />
+    );
+  }
 
   _loadContacts = async () => {
     // Ask for permission to query contacts.
-    const permission = await Expo.Permissions.askAsync(Expo.Permissions.CONTACTS);
+    const permission = await Permissions.askAsync(Permissions.CONTACTS);
     if (permission.status !== 'granted') {
       // Permission was denied...
       return;
     }
-    const contacts = await Expo.Contacts.getContactsAsync({
+    const contacts = await Contacts.getContactsAsync({
       fields: [
         Expo.Contacts.PHONE_NUMBERS,
         Expo.Contacts.EMAILS,
       ],
-      pageSize: 100,
       pageOffset: 0,
     });
     let results = [];
     if (contacts.total > 0) {
       contacts.data.map((contact) => {
-        console.log(contact.phoneNumbers);
-        results.push({
-          name: contact.name,
-          phoneNumbers: contact.phoneNumbers
+        let phoneNo = [];
+        contact.phoneNumbers.map((phoneNumber, i) => {
+          phoneNo.push(phoneNumber.number);
+        });
+        db.transaction(tx => {
+          tx.executeSql(
+            'INSERT INTO contacts(name, phoneNo) VALUES(?, ?);',
+            [contact.name, phoneNo.join(",")]
+          );
         });
       });
     }
-    this.setState({
-      contacts: results
-    });
   };
 
-  render() {
-    const {contacts, selectedContact} = this.state;
-    console.log(contacts);
-    return (
-      <ScrollView style={styles.container}>
-        <ContactDetail visible={selectedContact !== null} contact={selectedContact} closeContactDetail={this.closeContactDetail} />
-        <Text h1 style={{marginTop: 20}}>Contact List</Text>
-        <List containerStyle={{marginBottom: 20}}>
-          {
-            contacts.map((contact, i) => (
-              <ListItem
-                key={i}
-                onPress={() => this._onPressButton(contact)}
-                roundAvatar
-                avatar={{uri:"https://s3.amazonaws.com/uifaces/faces/twitter/adhamdannaway/128.jpg"}}
-                title={contact.name}
-                subtitle={
-                  <View style={styles.subtitleView}>
-                    {contact.phoneNumbers.map((phoneNumber, i) => (
-                      <Text numberOfLines={1} ellipsizeMode="tail" key={i} style={styles.ratingText}>{phoneNumber.number + "\n"}</Text>
-                    ))
-                    }
-                  </View>
+  async _cacheContactsAsync() {
+    db.transaction(tx => {
+      tx.executeSql(
+        'DROP TABLE if exists contacts;'
+      );
+      tx.executeSql(
+        'create table if not exists contacts (id integer primary key autoincrement, name text, phoneNo text);'
+      );
+    });
 
-                }
-              />
-            ))
-          }
-        </List>
-      </ScrollView>
-    );
+    this.setState({isReady: true});
   }
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  subtitleView: {
-    flexDirection: 'row',
-    paddingLeft: 10,
-    paddingTop: 5
-  },
-  ratingImage: {
-    height: 19.21,
-    width: 100
-  },
-  ratingText: {
-    paddingLeft: 10,
-    color: 'grey'
-  }
-});
 
 Expo.registerRootComponent(App);
